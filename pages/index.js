@@ -38,15 +38,14 @@ const HeroContent = styled(Box)({
 });
 
 const StyledCard = styled(Card)(({ theme }) => ({
-  background: 'white',
-  borderRadius: '16px',
-  boxShadow: 'none',
-  border: '1px solid #eee',
-  transition: 'all 0.3s ease',
+  height: '100%',
+  display: 'flex',
+  flexDirection: 'column',
+  transition: 'transform 0.2s ease-in-out',
   '&:hover': {
     transform: 'translateY(-4px)',
-    boxShadow: '0 12px 24px rgba(0,0,0,0.1)',
-  }
+    boxShadow: theme.shadows[4],
+  },
 }));
 
 const StyledCardMedia = styled(CardMedia)({
@@ -69,46 +68,38 @@ const StyledIconButton = styled(IconButton)({
   }
 });
 
-export default function Home() {
-  const cards = [
-    {
-      title: '2024 봄 트렌드',
-      description: '올해의 패션 트렌드를 한눈에',
-      image: 'https://source.unsplash.com/random/800x800?fashion,spring',
-      likes: 2453,
-    },
-    {
-      title: '건강한 아침식사',
-      description: '영양가 있는 아침 한끼',
-      image: 'https://source.unsplash.com/random/800x800?healthy,breakfast',
-      likes: 1829,
-    },
-    {
-      title: '홈 오피스 꾸미기',
-      description: '효율적인 재택근무 공간',
-      image: 'https://source.unsplash.com/random/800x800?office,minimal',
-      likes: 3102,
-    },
-    {
-      title: '봄 인테리어',
-      description: '화사한 봄맞이 인테리어',
-      image: 'https://source.unsplash.com/random/800x800?interior,spring',
-      likes: 2789,
-    },
-    {
-      title: '주말 브런치',
-      description: '특별한 주말 브런치 레시피',
-      image: 'https://source.unsplash.com/random/800x800?brunch,coffee',
-      likes: 1567,
-    },
-    {
-      title: '미니멀 라이프',
-      description: '심플한 생활의 즐거움',
-      image: 'https://source.unsplash.com/random/800x800?minimal,lifestyle',
-      likes: 4231,
-    }
-  ];
+// 구글 시트에서 데이터 가져오기
+export async function getStaticProps() {
+  // 여기에 구글 시트 ID를 넣습니다
+  const SHEET_ID = '1MIT--uFyfu8eTUilnW1vgSEjZlAl9NUg44tb2jlbLg8';
+  const SHEET_NAME = '시트1';
+  
+  const url = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:json&sheet=${SHEET_NAME}`;
 
+  try {
+    const response = await fetch(url);
+    const text = await response.text();
+    const data = JSON.parse(text.substring(47).slice(0, -2));
+    
+    // 구글 시트의 데이터를 카드 형식으로 변환
+    const cards = data.table.rows.slice(1).map(row => ({
+      title: row.c[0]?.v || '',     // 제목 (A열)
+      content: row.c[1]?.v || '',   // 원문 (B열)
+      url: row.c[2]?.v || '',       // URL (C열)
+      date: row.c[3]?.v || ''       // 작성일 (D열)
+    }));
+
+    return {
+      props: { cards },
+      revalidate: 60 // 1분마다 데이터 갱신
+    };
+  } catch (error) {
+    console.error('Error:', error);
+    return { props: { cards: [] } };
+  }
+}
+
+export default function Home({ cards }) {
   return (
     <Box sx={{ bgcolor: '#FAFAFA', minHeight: '100vh' }}>
       <HeroSection>
@@ -150,49 +141,31 @@ export default function Home() {
             color: '#333'
           }}
         >
-          트렌딩 카드뉴스
+          경제 뉴스
         </Typography>
         <Grid container spacing={3}>
           {cards.map((card, index) => (
             <Grid item key={index} xs={12} sm={6} md={4}>
               <StyledCard>
-                <CardMedia
-                  component="img"
-                  height="300"
-                  image={card.image}
-                  alt={card.title}
-                />
-                <CardContent sx={{ p: 2 }}>
-                  <Typography variant="h6" sx={{ fontWeight: 600, mb: 1 }}>
+                <CardContent>
+                  <Typography variant="h6" gutterBottom>
                     {card.title}
                   </Typography>
-                  <Typography variant="body2" color="text.secondary">
-                    {card.description}
+                  <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                    {card.content}
                   </Typography>
+                  <Typography variant="caption" color="text.secondary">
+                    {new Date(card.date).toLocaleDateString()}
+                  </Typography>
+                  {card.url && (
+                    <Box sx={{ mt: 2 }}>
+                      <a href={card.url} target="_blank" rel="noopener noreferrer" 
+                         style={{ color: '#1976d2', textDecoration: 'none' }}>
+                        뉴스 보기 →
+                      </a>
+                    </Box>
+                  )}
                 </CardContent>
-                <Box sx={{ 
-                  display: 'flex', 
-                  justifyContent: 'space-between', 
-                  alignItems: 'center',
-                  p: 2 
-                }}>
-                  <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                    <IconButton size="small">
-                      <FavoriteIcon />
-                    </IconButton>
-                    <Typography variant="body2" color="text.secondary">
-                      {card.likes.toLocaleString()}
-                    </Typography>
-                  </Box>
-                  <Box>
-                    <IconButton size="small">
-                      <ShareIcon />
-                    </IconButton>
-                    <IconButton size="small">
-                      <BookmarkIcon />
-                    </IconButton>
-                  </Box>
-                </Box>
               </StyledCard>
             </Grid>
           ))}
